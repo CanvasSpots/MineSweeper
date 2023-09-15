@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= 0.9
+version= "0.9.1"
 title = """
 
 TEXT - BASED -
@@ -13,7 +13,7 @@ M M M  I  N N N  EEE      /    SSSSS  W W W  EEE    EEE    PPPP   EEE    RRRR
 M   M  I  N  NN  E       /         S  WW WW  E      E      P      E      R   R
 M   M  I  N   N  EEEEE  /      SSSSS  W   W  EEEEE  EEEEE  P      EEEEE  R   R
 
-                                                                  version  {vers}""".format(vers=version)
+                                       Created By: Derek Bauer / version {vers}""".format(vers=version)
 
 gameboard = []
 gameboard_text = ""
@@ -187,7 +187,6 @@ def generate_gameboard(total_rows, total_columns):
         column_list = []
         for col in range(0, total_columns):
             if mine_check(row, col):
-                print('mine deployed')
                 column_list.append(Field(row, col, "Mine"))
             else:
                 column_list.append(Field(row, col))
