@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.0.2"
+version= "1.0.3"
 title = """
 
 TEXT - BASED -
@@ -63,6 +63,7 @@ class Field:
     def __repr__(self):
         return "Field type {type} is located at {row} and {col}.".format(type=self.type, row=self.cord_row, col=self.cord_col)
     
+    # Counts the number of mines around the currently selected cell.
     def mine_counter(self, gameboard, total_rows, total_cols):
         if self.type == "Num":
             count = 0
@@ -75,6 +76,7 @@ class Field:
                             count += 1
             self.counter = count
 
+    # Counts the number of flags around the currently selected cell.
     def flag_counter(self, gameboard, total_rows, total_cols):
         count = 0
         for row_plus in range(-1, 2):
@@ -86,6 +88,7 @@ class Field:
                         count += 1
         return count
     
+    # Checks the selected cell. If the cell is a number, reveals the number. If the cell is a bomb, reveals the bomb and ends the game in a loss. And if all cells have been flipped, ends the game in a win.
     def set_spot(self, total_rows, total_cols):
         error = False
         gameover = False
@@ -94,7 +97,8 @@ class Field:
                 self.name = str(self.counter)
                 Field.total_free -= 1
 
-                # If the flags match the number selected, will check the surrounding cells
+                # If the number of flags indicated in the cell match the number selected, this will add each cell surrounding the current one to the action list. Action list will then repeat the set_spot function to find more empty cells (or can end the game if the wrong cell is flagged). 
+                # Trust me, this small piece of code makes the game so much better.
                 if self.counter == self.flag_counter(gameboard, total_rows, total_cols):
                     for row_plus in range(-1, 2):
                         for col_plus in range(-1, 2):
@@ -122,6 +126,8 @@ class Field:
             time.sleep(2)
             print("\n- - - Game Over - - -\n")  
             exit()
+
+        # Checkout refers to if the cell has been checked-out by the player or by the game. If the cell is checked-out by the player, there is a change they've selected a flag cell or a number cell and needs to be re-selected. Also lets the player select a new action after correctly selecting a cell.
         elif self.checkout == True:
             if error == True:
                 if self.name == "F":
@@ -133,8 +139,8 @@ class Field:
             select_action()
         self.checkout = True
 
+    # Sets the current spot to a flag or changes it to not a flag. Also changes quantity of remaining bombs. If a location is already unlocked, it will request a new action.
     def set_flag(self, total_rows, total_cols):
-        # Sets the current spot to a flag
         error = False
         if self.name == " ":
             self.name = "F"
@@ -152,6 +158,7 @@ class Field:
         select_action()
             
 # Functions -- -- -- --
+# Lets the player select their level of difficulty. Easy, Medium, and Hard mode rows, columns, and mines taken from real Minesweeper. Custom builds a board as big as the player wants with as many mines as they want, but there must always be at least one cell must not be a mine.
 def select_difficulty():
     selection = input("""
 What level of difficulty would you like to play on?
@@ -162,6 +169,8 @@ What level of difficulty would you like to play on?
     selection = selection.lower()
     if selection in difficulties:
         return difficulties[selection]
+    
+    # The magic of custom games starts here. Input runs until the correct number has been added.
     elif selection == "custom":
         input_rows = int(input("How many rows? "))
         input_cols = int(input("How many columns? "))
@@ -193,8 +202,8 @@ def mine_check(check_row, check_col):
             return True
     return False
 
+# Generates the gameboard by first creating a "Field" class for each cell and setting them to mine or number. After the field has been set, the numbers will correctly calculate how many mines are around them. As I think abou this, I could have added a script to add to all surrounding cells using the mines, but I didn't.
 def generate_gameboard(total_rows, total_columns):
-    # Generates all the classes in each row of the field.
     for row in range(0, total_rows):
         column_list = []
         for col in range(0, total_columns):
@@ -205,12 +214,12 @@ def generate_gameboard(total_rows, total_columns):
                 Field.total_free += 1
         gameboard.append(column_list)
     
-    # Goes through each field item and checks their numbers. 
-    # This has to be done after generation so that all instances of the class are on the field to check.
+    # Goes through each field item and checks their numbers. This has to be done after generation so that all instances of the class are on the field to check.
     for row in range(0, total_rows):
         for col in range(0, total_columns):
             gameboard[row][col].mine_counter(gameboard, total_rows, total_columns)
 
+# The magical gameboard text generator creates a gameboard. Creates a key for each row and column at the top and the left to help players navigate the board. Gathers what the cell is currently supposed to be displaying as well. Also creates square boxes using text around each of the cells. Board should correctly display for all sizes up to 99.
 def generate_gameboard_text(rows, cols):
     rows2 = rows * 2 + 1
     cols2 = cols * 2 + 1
@@ -276,6 +285,7 @@ def generate_gameboard_text(rows, cols):
     print(text)
     return text
 
+# Lets the player select what they'll be doing next. Added in hints to help players go faster.
 def select_action():
     selection = "retry"
     selection = input("""
@@ -311,6 +321,7 @@ What would you like to do?
         print("Sorry, but that's not a valid option. Please select again. \n")
         select_action()
 
+# Magical bit of code that splits apart a player's selection for the faster selection bit.
 def selection_split(selection):
     split_choice = selection.split(":")
     split_select = split_choice[1].split(",")
@@ -322,6 +333,7 @@ def selection_split(selection):
         split_select = [-1, -1]
     return split_select
 
+# If selecting a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_spot method.
 def select_spot(total_rows, total_cols, init_row = -1, init_col = -1):
     select_row = init_row
     select_col = init_col
@@ -331,6 +343,7 @@ def select_spot(total_rows, total_cols, init_row = -1, init_col = -1):
         select_col = int(input("Which column would you like to select? "))
     gameboard[select_row][select_col].set_spot(total_rows, total_cols)
 
+# If flagging a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_flag method.
 def select_flag(total_rows, total_cols, init_row = -1, init_col = -1):
     select_row = init_row
     select_col = init_col
@@ -340,6 +353,7 @@ def select_flag(total_rows, total_cols, init_row = -1, init_col = -1):
         select_col = int(input("Which column would you like to select? "))
     gameboard[select_row][select_col].set_flag(total_rows, total_cols)
 
+# goes through the action list and sees if the action already exists.
 def check_actions(check_row, check_col):
     for item in actionlist:
         if item[0] == check_row and item[1] == check_col:
@@ -353,6 +367,7 @@ def win():
     exit()
 
 # Gameplay -- -- -- --
+# I'm really sad to say that this is so far all I've generated for the gameplay tab. Looking at adding the "Game" class which should be able to keep track of games, scores, and start new ones. Also hoping to integrate a bit of a text file to add saves for statistics.
 print('\n\nWelcome to...' + title)
 time.sleep(1)
 
