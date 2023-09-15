@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "0.9.1"
+version= "1.0.0"
 title = """
 
 TEXT - BASED -
@@ -47,8 +47,10 @@ class Game:
     
     def __repr__(self):
         return "This is game {num}.".format(num=self.game_num)
-    
+        
 class Field:
+    total_free = 0
+    total_flags = 0
 
     def __init__(self, init_row, init_col, init_type = "Num"):
         self.name = " "
@@ -90,6 +92,7 @@ class Field:
         if self.name == " ":
             if self.type == "Num":
                 self.name = str(self.counter)
+                Field.total_free -= 1
 
                 # If the flags match the number selected, will check the surrounding cells
                 if self.counter == self.flag_counter(gameboard, total_rows, total_cols):
@@ -112,12 +115,14 @@ class Field:
                 gameboard[actions[0]][actions[1]].checkout = False
                 gameboard[actions[0]][actions[1]].set_spot(total_rows, total_cols)
         
-        if gameover == True:    
+        if Field.total_free == 0:
+            win()
+        elif gameover == True:    
             print("You hit a mine!")
             time.sleep(2)
             print("\n- - - Game Over - - -\n")  
             exit()
-        if self.checkout == True:
+        elif self.checkout == True:
             if error == True:
                 if self.name == "F":
                     print("Sorry, but that location is protected by a flag.")
@@ -133,8 +138,10 @@ class Field:
         error = False
         if self.name == " ":
             self.name = "F"
+            Field.total_flags += 1
         elif self.name == "F":
             self.name = " "
+            Field.total_flags -= 1
         else:
             error = True
         generate_gameboard_text(total_rows, total_cols)
@@ -190,6 +197,7 @@ def generate_gameboard(total_rows, total_columns):
                 column_list.append(Field(row, col, "Mine"))
             else:
                 column_list.append(Field(row, col))
+                Field.total_free += 1
         gameboard.append(column_list)
     
     # Goes through each field item and checks their numbers. 
@@ -259,10 +267,12 @@ def generate_gameboard_text(rows, cols):
                         text += "\n"
                 else:
                     text += gameboard[true_row][true_col].name
+    text += "\nThere are {mines} remaining.".format(mines=len(gamemines)-Field.total_flags)
     print(text)
     return text
 
 def select_action():
+    selection = "retry"
     selection = input("""
 What would you like to do?
     ┌ - - - - - - - - - - - - - - ┐
@@ -270,6 +280,7 @@ What would you like to do?
     └ - - - - - - - - - - - - - - ┘                      
 """)
     selection = selection.lower()
+    selection += ":"
     if "s" in selection[0]:
         if (":" in selection) and ("," in selection):
             split = selection_split(selection)
@@ -284,8 +295,7 @@ What would you like to do?
         exit()
     else: 
         print("Sorry, but that's not a valid option. Please select again. \n")
-        selection.action()
-        
+        select_action()
 
 def selection_split(selection):
     split_choice = selection.split(":")
@@ -321,6 +331,12 @@ def check_actions(check_row, check_col):
         if item[0] == check_row and item[1] == check_col:
             return False
     return True
+
+# Win / Lose -- -- -- --
+def win():
+    generate_gameboard_text(total_rows, total_cols)
+    print("Congratulations! You won!")
+    exit()
 
 # Gameplay -- -- -- --
 print('\n\nWelcome to...' + title)
