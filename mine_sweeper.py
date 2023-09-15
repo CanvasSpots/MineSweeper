@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.0.0"
+version= "1.0.2"
 title = """
 
 TEXT - BASED -
@@ -161,12 +161,17 @@ What level of difficulty would you like to play on?
 """)
     selection = selection.lower()
     if selection in difficulties:
-        # This clears the previous game boards to reset.
-        gameboard.clear()
-        gamemines.clear()
-
         return difficulties[selection]
-        
+    elif selection == "custom":
+        input_rows = int(input("How many rows? "))
+        input_cols = int(input("How many columns? "))
+        input_mines = int(input("How many mines? "))
+        while (input_rows * input_cols) <= input_mines:
+            print("It seems you've entered too many mines. Please try again.")
+            input_rows = int(input("How many rows? "))
+            input_cols = int(input("How many columns? "))
+            input_mines = int(input("How many mines? "))
+        return [input_rows, input_cols, input_mines]
     else:
         print("Sorry, but that's not a valid difficulty. Please select again. \n")
         select_difficulty()
@@ -275,16 +280,18 @@ def select_action():
     selection = "retry"
     selection = input("""
 What would you like to do?
-    ┌ - - - - - - - - - - - - - - ┐
-    | Options: Select, Flag, Quit |
-    └ - - - - - - - - - - - - - - ┘                      
+    ┌ - - - - - - - - - - - - - - - - - ┐
+    | Options: Select, Flag, Quit, Hint |
+    └ - - - - - - - - - - - - - - - - - ┘                      
 """)
     selection = selection.lower()
-    selection += ":"
+    selection += " "
     if "s" in selection[0]:
         if (":" in selection) and ("," in selection):
             split = selection_split(selection)
             select_spot(total_rows, total_cols, int(split[0]), int(split[1]))
+        else:
+            select_spot(total_rows, total_cols)
     elif "f" in selection[0]:
         if (":" in selection) and ("," in selection):
             split = selection_split(selection)
@@ -293,6 +300,13 @@ What would you like to do?
             select_flag(total_rows, total_cols)
     elif "quit" in selection:
         exit()
+    elif "h" in selection:
+        print("""
+    1. To quickly select a cell, try use the syntax s:row,column.
+    2. To quickly flag a cell, try using the syntax f:row,column.
+    3. Don't worry about upper- or lower-case letters, the program will fix them for you.
+    4. Have fun!""")
+        select_action()
     else: 
         print("Sorry, but that's not a valid option. Please select again. \n")
         select_action()
