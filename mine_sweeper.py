@@ -1,19 +1,24 @@
 import time
-import random
+import random as ran
 
 # Starting Variables -- -- -- --
+version= 0.9
 title = """
+
+TEXT - BASED -
+
 M   M  I  N   N  EEEEE      /  SSSSS  W   W  EEEEE  EEEEE  PPPP   EEEEE  RRRR
 MM MM  I  NN  N  E         /   S      W   W  E      E      P   P  E      R   R
 M M M  I  N N N  EEE      /    SSSSS  W W W  EEE    EEE    PPPP   EEE    RRRR
 M   M  I  N  NN  E       /         S  WW WW  E      E      P      E      R   R
-M   M  I  N   N  EEEEE  /      SSSSS  W   W  EEEEE  EEEEE  P      EEEEE  R   R"""
+M   M  I  N   N  EEEEE  /      SSSSS  W   W  EEEEE  EEEEE  P      EEEEE  R   R
 
-game_num = 0
+                                                                  version  {vers}""".format(vers=version)
+
 gameboard = []
 gameboard_text = ""
 gamemines = []
-playerboard = []
+actionlist = []
 
 # Difficulties are shown with their row, column, and number of mines.
 difficulties = {
@@ -23,136 +28,312 @@ difficulties = {
 }
 
 # Classes -- -- -- --
-class Mine:
-    name = "M"
-    rows = []
-    cols = []
+class Game:
+    game_num = 0
 
-    def __init__(self, mine_num, total_rows, total_cols):
-        self.id = mine_num
-        self.cord_row = random.randint(0, total_rows)
-        self.cord_col = random.randint(0, total_cols)
-        self.check_mine(total_rows, total_cols)
+    def __init__(self):
+        self.game_num = Game.game_num
+        Game.game_num += 1
+
+        # Set-up the game's difficulty
+        self.difficulty = select_difficulty()
+        self.rows = self.difficulty[0]
+        self.cols = self.difficulty[1]
+        self.mines = self.difficulty[2]
+
+        # Set-up the game's initial information
+        self.game_mine = generate_mines(self.rows, self.cols)
+        self.gameboard = generate_gameboard(self.rows, self.cols)
     
     def __repr__(self):
-        return "Mine {num} is located at {row} and {col}.".format(num=self.id, row=self.cord_row, col=self.cord_col)
+        return "This is game {num}.".format(num=self.game_num)
+    
+class Field:
 
-    # Checks if the mine already exists at that coordinate. If it does, it generates a new coordinate.
-    def check_mine(self, total_rows, total_cols):
-        while mine_check(self.cord_row, self.cord_col):
-            self.cord_row = random.randint(0, total_rows)
-            self.cord_col = random.randint(0, total_cols)
-        Mine.rows.append(self.cord_row)
-        Mine.cols.append(self.cord_col)
+    def __init__(self, init_row, init_col, init_type = "Num"):
+        self.name = " "
+        self.cord_row = init_row
+        self.cord_col = init_col
+        self.type = init_type
+        self.counter = 0
+        self.checkout = True
+    
+    def __repr__(self):
+        return "Field type {type} is located at {row} and {col}.".format(type=self.type, row=self.cord_row, col=self.cord_col)
+    
+    def mine_counter(self, gameboard, total_rows, total_cols):
+        if self.type == "Num":
+            count = 0
+            for row_plus in range(-1, 2):
+                for col_plus in range(-1, 2):
+                    test_row = self.cord_row + row_plus
+                    test_col = self.cord_col + col_plus 
+                    if test_row >= 0 and test_col >= 0 and test_row < total_rows and test_col < total_cols:
+                        if gameboard[test_row][test_col].type == "Mine":
+                            count += 1
+            self.counter = count
 
+    def flag_counter(self, gameboard, total_rows, total_cols):
+        count = 0
+        for row_plus in range(-1, 2):
+            for col_plus in range(-1, 2):
+                test_row = self.cord_row + row_plus
+                test_col = self.cord_col + col_plus 
+                if test_row >= 0 and test_col >= 0 and test_row < total_rows and test_col < total_cols:
+                    if gameboard[test_row][test_col].name == "F":
+                        count += 1
+        return count
+    
+    def set_spot(self, total_rows, total_cols):
+        error = False
+        gameover = False
+        if self.name == " ":
+            if self.type == "Num":
+                self.name = str(self.counter)
 
+                # If the flags match the number selected, will check the surrounding cells
+                if self.counter == self.flag_counter(gameboard, total_rows, total_cols):
+                    for row_plus in range(-1, 2):
+                        for col_plus in range(-1, 2):
+                            test_row = self.cord_row + row_plus
+                            test_col = self.cord_col + col_plus
+                            if test_row >= 0 and test_col >= 0 and test_row < total_rows and test_col < total_cols and gameboard[test_row][test_col].name == " ":
+                                if check_actions(test_row, test_col):
+                                    actionlist.append([test_row, test_col, True])
+            else:
+                self.name = "M"
+                gameover = True                             
+        else:
+            error = True
+
+        for actions in actionlist:
+            if actions[2]:
+                actions[2] = False
+                gameboard[actions[0]][actions[1]].checkout = False
+                gameboard[actions[0]][actions[1]].set_spot(total_rows, total_cols)
+        
+        if gameover == True:    
+            print("You hit a mine!")
+            time.sleep(2)
+            print("\n- - - Game Over - - -\n")  
+            exit()
+        if self.checkout == True:
+            if error == True:
+                if self.name == "F":
+                    print("Sorry, but that location is protected by a flag.")
+                else: 
+                    print("Sorry, but that locaiton cannot be selected.")
+                select_spot(total_rows, total_cols)
+            generate_gameboard_text(total_rows, total_cols)
+            select_action()
+        self.checkout = True
+
+    def set_flag(self, total_rows, total_cols):
+        # Sets the current spot to a flag
+        error = False
+        if self.name == " ":
+            self.name = "F"
+        elif self.name == "F":
+            self.name = " "
+        else:
+            error = True
+        generate_gameboard_text(total_rows, total_cols)
+
+        if error == True:
+            print("Sorry, but that location cannot be flagged.")
+            select_flag(total_rows, total_cols)
+        select_action()
+            
 # Functions -- -- -- --
-def select_difficulty(game_num):
-    difficulty = input("""
+def select_difficulty():
+    selection = input("""
 What level of difficulty would you like to play on?
     ┌ - - - - - - - - - - - - - - - - - - - - ┐
     | Options: Easy, Medium, Hard, and Custom |
     └ - - - - - - - - - - - - - - - - - - - - ┘
 """)
-    difficulty = difficulty.lower()
-    if difficulty in difficulties:
+    selection = selection.lower()
+    if selection in difficulties:
         # This clears the previous game boards to reset.
-        game_num += 1
         gameboard.clear()
         gamemines.clear()
-        playerboard.clear()
 
-        num_rows = difficulties[difficulty][0]
-        num_columns = difficulties[difficulty][1]
-        num_mines = difficulties[difficulty][2]
-
-        generate_mines(num_mines, num_rows, num_columns)
-        generate_gameboard(num_rows, num_columns)
-        generate_gameboard_text(num_rows, num_columns)
+        return difficulties[selection]
         
     else:
         print("Sorry, but that's not a valid difficulty. Please select again. \n")
         select_difficulty()
 
-def generate_gameboard_text(rows, columns):
-    rows2 = rows * 2
-    cols2 = columns * 2
-    text = ""
-    for row in range(0, rows2 + 1):
-        for col in range(0, cols2 + 1):
-            if row == 0:
-                if col == 0:
-                    text += " ┌ "
-                elif col == cols2:
-                    text += " ┐ \n"
-                elif col % 2 == 0:
-                    text += " ┬ "
-                else:
-                    text += "-"
-            elif row == rows2:
-                if col == 0:
-                    text += " └ "
-                elif col == cols2:
-                    text += " ┘ "
-                elif col % 2 == 0:
-                    text += " ┴ "
-                else:
-                    text += "-"
-            elif row % 2 == 0:
-                if col == 0:
-                    text += " ├ "
-                elif col == cols2:
-                    text += " ┤ \n"
-                elif col % 2 == 0:
-                    text += " ┼ "
-                else:
-                    text += '-'
-            else:
-                if (col % 2 == 0):
-                    text += " | "
-                    if col == cols2:
-                        text += "\n"
-                else:
-                    true_row = int((row - 1) / 2)
-                    true_col = int((col - 1) / 2)
-                    if gameboard[true_row][true_col] == 0:
-                        text += " "
-                    else:
-                        text += str(gameboard[true_row][true_col])
-    print(text)
-    return text
-
+# Generate mines returns a list of locations the mines can go. Mines cannot be placed on-top of pre-existing mines.
 def generate_mines(num_mines, rows, columns):
     for mine in range(0, num_mines):
-        row = rows - 1
-        col = columns - 1
-        gamemines.append(Mine(mine, row, col))
+        mine_row = ran.randint(0, rows - 1)
+        mine_col = ran.randint(0, columns - 1)
+        while mine_check(mine_row, mine_col):
+            mine_row = ran.randint(0, rows - 1)
+            mine_col = ran.randint(0, columns - 1)
+        gamemines.append({'num': mine, 'row': mine_row, 'col': mine_col})
 
+# Mine check looks to see if a mine exists at the locaiton indicated. Returns a boolean.
 def mine_check(check_row, check_col):
-    for mine_id in range(0, len(gamemines)):
-        if check_row == Mine.rows[mine_id] and check_col == Mine.cols[mine_id]:
+    for mine in gamemines:
+        if check_row == mine['row'] and check_col == mine['col']:
             return True
     return False
 
 def generate_gameboard(total_rows, total_columns):
+    # Generates all the classes in each row of the field.
     for row in range(0, total_rows):
         column_list = []
         for col in range(0, total_columns):
             if mine_check(row, col):
-                column_list.append(Mine.name)
+                print('mine deployed')
+                column_list.append(Field(row, col, "Mine"))
             else:
-                space_num = 0
-                for row_add in range(-1, 2):
-                    for col_add in range(-1, 2):
-                        new_row = row + row_add
-                        new_col = col + col_add
-                        if mine_check(new_row, new_col):
-                            space_num += 1
-                column_list.append(space_num)
+                column_list.append(Field(row, col))
         gameboard.append(column_list)
+    
+    # Goes through each field item and checks their numbers. 
+    # This has to be done after generation so that all instances of the class are on the field to check.
+    for row in range(0, total_rows):
+        for col in range(0, total_columns):
+            gameboard[row][col].mine_counter(gameboard, total_rows, total_columns)
+
+def generate_gameboard_text(rows, cols):
+    rows2 = rows * 2 + 1
+    cols2 = cols * 2 + 1
+    text = ""
+    for row in range(0, rows2 + 1):
+        for col in range(0, cols2 + 1):
+            true_row = int((row - 1) / 2)
+            true_col = int((col - 1) / 2)
+            if (row == 0) or (col == 0):
+                if (row == 0) and (col == 0):
+                    text += "  "
+                    if rows > 10:
+                        text += " "
+                elif (row % 2 == 1) or (col % 2 == 1):
+                    text += " "
+                    if rows > 10 and col == 0:
+                        text += " "
+                    if col == cols2:
+                        text += "\n"
+                elif row == 0:
+                    text += " " + str(true_col)
+                    if true_col < 10:
+                        text += " "
+                else: 
+                    text += str(true_row)
+                    if true_row < 10 and rows > 10:
+                        text += " "
+            elif row == 1:
+                if col == 1:
+                    text += " ┌ "
+                elif col == cols2:
+                    text += " ┐ \n"
+                elif col % 2 == 1:
+                    text += " ┬ "
+                else:
+                    text += "-"
+            elif row == rows2:
+                if col == 1:
+                    text += " └ "
+                elif col == cols2:
+                    text += " ┘ "
+                elif col % 2 == 1:
+                    text += " ┴ "
+                else:
+                    text += "-"
+            elif row % 2 == 1:
+                if col == 1:
+                    text += " ├ "
+                elif col == cols2:
+                    text += " ┤ \n"
+                elif col % 2 == 1:
+                    text += " ┼ "
+                else:
+                    text += '-'
+            else:
+                if (col % 2 == 1):
+                    text += " | "
+                    if col == cols2:
+                        text += "\n"
+                else:
+                    text += gameboard[true_row][true_col].name
+    print(text)
+    return text
+
+def select_action():
+    selection = input("""
+What would you like to do?
+    ┌ - - - - - - - - - - - - - - ┐
+    | Options: Select, Flag, Quit |
+    └ - - - - - - - - - - - - - - ┘                      
+""")
+    selection = selection.lower()
+    if "s" in selection[0]:
+        if (":" in selection) and ("," in selection):
+            split = selection_split(selection)
+            select_spot(total_rows, total_cols, int(split[0]), int(split[1]))
+    elif "f" in selection[0]:
+        if (":" in selection) and ("," in selection):
+            split = selection_split(selection)
+            select_flag(total_rows, total_cols, int(split[0]), int(split[1]))
+        else:
+            select_flag(total_rows, total_cols)
+    elif "quit" in selection:
+        exit()
+    else: 
+        print("Sorry, but that's not a valid option. Please select again. \n")
+        selection.action()
+        
+
+def selection_split(selection):
+    split_choice = selection.split(":")
+    split_select = split_choice[1].split(",")
+    if len(split_select) == 2:
+        for selection in range(0,len(split_select)):
+            split_select[selection] = int(split_select[selection].strip())
+    else:
+        print("Row and Column selection is invalid, please retry.")
+        split_select = [-1, -1]
+    return split_select
+
+def select_spot(total_rows, total_cols, init_row = -1, init_col = -1):
+    select_row = init_row
+    select_col = init_col
+    while (select_row < 0) or (select_row >= total_rows):
+        select_row = int(input("Which row would you like to select? "))
+    while (select_col < 0) or (select_col >= total_cols):
+        select_col = int(input("Which column would you like to select? "))
+    gameboard[select_row][select_col].set_spot(total_rows, total_cols)
+
+def select_flag(total_rows, total_cols, init_row = -1, init_col = -1):
+    select_row = init_row
+    select_col = init_col
+    while (select_row < 0) or (select_row >= total_rows):
+        select_row = int(input("Which row would you like to select? "))
+    while (select_col < 0) or (select_col >= total_cols):
+        select_col = int(input("Which column would you like to select? "))
+    gameboard[select_row][select_col].set_flag(total_rows, total_cols)
+
+def check_actions(check_row, check_col):
+    for item in actionlist:
+        if item[0] == check_row and item[1] == check_col:
+            return False
+    return True
 
 # Gameplay -- -- -- --
 print('\n\nWelcome to...' + title)
 time.sleep(1)
 
-select_difficulty(game_num)
+difficulty = select_difficulty()
+
+total_rows = difficulty[0]
+total_cols = difficulty[1]
+total_mines = difficulty[2]
+
+generate_mines(total_mines, total_rows, total_cols)
+generate_gameboard(total_rows, total_cols)
+generate_gameboard_text(total_rows, total_cols)
+select_action()
