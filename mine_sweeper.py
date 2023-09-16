@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.1.3"
+version= "1.1.4"
 title = """
 
 TEXT - BASED -
@@ -17,9 +17,13 @@ M   M  I  N   N  EEEEE  /      SSSSS  W   W  EEEEE  EEEEE  P      EEEEE  R   R
 
 gameboard_text = ""
 
+bad_hints = [
+    ""
+]
+
 # Classes -- -- -- --
 class Game:
-    # Game number shows total games, wins, losses, and picked tiles
+    # Game number shows total games, wins, losses, and cells cleared
     game_num = [0, 0, 0, 0]
     # Difficulties are arranged in the following order: Rows, columns, and mines; then total played.
     difficulties = {
@@ -51,7 +55,9 @@ class Game:
             win_loss = 1
         return_text = "This account has a total of {win} wins and {loss} losses for an overall win/loss ratio of {winloss}.".format(win=Game.game_num[1], loss=Game.game_num[2], winloss=win_loss)
         
-        return_text += "\nThe player has played {easy} easy games, {med} medium games, {hard} hard games, and {cust} custom games.".format(easy=Game.difficulties["easy"][3], med=Game.difficulties["medium"][3], hard=Game.difficulties["hard"][3], cust=Game.difficulties["customs"][3])
+        return_text += "\nThis account has played {easy} easy games, {med} medium games, {hard} hard games, and {cust} custom games.".format(easy=Game.difficulties["easy"][3], med=Game.difficulties["medium"][3], hard=Game.difficulties["hard"][3], cust=Game.difficulties["customs"][3])
+
+        return_text += "\n\nThis account has cleared {tiles} cells from mines.".format(tiles=Game.game_num[3])
 
         return_text += "\n\nThis is game {num}.".format(num=self.game_num)
         return return_text
@@ -78,7 +84,13 @@ class Game:
             self.game_mines = self.generate_mines(first_selection)
             self.gameboard = self.generate_gameboard()
             self.select_spot(first_selection)
-        if "s" in game_select[0]:
+        elif "l" in game_select[0]:
+            print('Sorry, but lading is not available at this time.')
+            self.start_game()
+        elif "e" in game_select[0]:
+            print("Sorry, but there are no extras available at this time.")
+            self.start_game()
+        elif "s" in game_select[0]:
             print(self)
             self.start_game()
         else:
@@ -167,12 +179,15 @@ class Game:
             return start_spot
         elif "main" in selection:
             self.start_game()
+        elif "quit" in selection:
+            exit()
         elif "h" in selection:
             print("""
     1. To quickly select a cell, try use the syntax s:row,column.
     2. Main will return you to the main menu.
-    3. Don't worry about upper- or lower-case letters, the program will fix them for you.
-    4. Have fun!""")
+    3. You can always quit the game with "quit".
+    4. Don't worry about upper- or lower-case letters, the program will fix them for you.
+    5. Have fun!""")
             self.select_action()
         else: 
             print("Sorry, but that's not a valid option. Please select again. \n")
@@ -208,13 +223,16 @@ class Game:
             Game.game_num[2] += 1
             gamelist.append(Game())
             gamelist[-1].start_game()
+        elif "quit" in selection:
+            exit()
         elif "h" in selection:
             print("""
         1. To quickly select a cell, try use the syntax s:row,column.
         2. To quickly flag a cell, try using the syntax f:row,column.
         3. Main will return you to the main menu.
-        4. Don't worry about upper- or lower-case letters, the program will fix them for you.
-        5. Have fun!""")
+        4. You can always quit the game with "quit".
+        5. Don't worry about upper- or lower-case letters, the program will fix them for you.
+        6. Have fun!""")
             self.select_action()
         else: 
             print("Sorry, but that's not a valid option. Please select again. \n")
