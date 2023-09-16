@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.1.4C"
+version= "1.1.5C"
 title = """
 
 TEXT - BASED -
@@ -172,9 +172,9 @@ class Game:
                 if type(start_spot[0]) == type(int()) and type(start_spot[1]) == type(int()):
                     return start_spot
             start_spot = [-1, -1]
-            while (start_spot[0] < 0) or (start_spot[0] >= self.rows):
+            while (0 > start_spot[0] >= self.rows):
                 start_spot[0] = int(input("Which row would you like to select? "))
-            while (start_spot[1] < 0) or (start_spot[1] >= self.cols):
+            while (0 > start_spot[1] >= self.cols):
                 start_spot[1] = int(input("Which column would you like to select? "))
             return start_spot
         elif "main" in selection:
@@ -242,19 +242,21 @@ class Game:
     def select_spot(self, init_spot = [-1, -1]):
         select_row = init_spot[0]
         select_col = init_spot[1]
-        while (select_row < 0) or (select_row >= self.rows):
+        while (0 > select_row >= self.rows):
             select_row = int(input("Which row would you like to select? "))
-        while (select_col < 0) or (select_col >= self.cols):
+        while (0 > select_col >= self.cols):
             select_col = int(input("Which column would you like to select? "))
+        select_row = int(select_row)
+        select_col = int(select_col)
         self.gameboard[select_row][select_col].set_spot(self.gameboard, self.action_list, self.rows, self.cols)
 
     # If flagging a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_flag method.
     def select_flag(self, init_spot = [-1, -1]):
         select_row = init_spot[0]
         select_col = init_spot[1]
-        while (select_row < 0) or (select_row >= self.rows):
+        while (0 > select_row >= self.rows):
             select_row = int(input("Which row would you like to select? "))
-        while (select_col < 0) or (select_col >= self.cols):
+        while (0 > select_col >= self.cols):
             select_col = int(input("Which column would you like to select? "))
         self.gameboard[select_row][select_col].set_flag(self.rows, self.cols)
 
@@ -264,7 +266,7 @@ class Field:
     total_flags = 0
 
     def __init__(self, init_row, init_col, init_type = "Num"):
-        self.name = " "
+        self.name = "◻"
         self.cord_row = init_row
         self.cord_col = init_col
         self.type = init_type
@@ -299,7 +301,7 @@ class Field:
                 if row_plus == 0 and col_plus == 0:
                     pass
                 elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols:
-                    if gameboard[test_row][test_col].name == "F":
+                    if gameboard[test_row][test_col].name == "⚑":
                         count += 1
         return count
     
@@ -307,9 +309,12 @@ class Field:
     def set_spot(self, gameboard, action_list, rows, cols):
         error = False
         gameover = False
-        if self.name == " ":
+        if self.name == "◻":
             if self.type == "Num":
-                self.name = str(self.counter)
+                if self.counter == 0:
+                    self.name = " "
+                else:
+                    self.name = str(self.counter)
                 Field.total_free -= 1
                 Game.game_num[3] += 1
 
@@ -322,7 +327,7 @@ class Field:
                             test_col = self.cord_col + col_plus
                             if row_plus == 0 and col_plus == 0:
                                 pass
-                            elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols and gameboard[test_row][test_col].name == " ":
+                            elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols and gameboard[test_row][test_col].name == "◻":
                                 if check_actions(test_row, test_col):
                                     action_list.append([test_row, test_col, True])
             else:
@@ -345,7 +350,7 @@ class Field:
         # Checkout refers to if the cell has been checked-out by the player or by the game. If the cell is checked-out by the player, there is a change they've selected a flag cell or a number cell and needs to be re-selected. Also lets the player select a new action after correctly selecting a cell.
         elif self.checkout == True:
             if error == True:
-                if self.name == "F":
+                if self.name == "⚑":
                     print("Sorry, but that location is protected by a flag.")
                 else: 
                     print("Sorry, but that locaiton cannot be selected.")
@@ -357,11 +362,11 @@ class Field:
     # Sets the current spot to a flag or changes it to not a flag. Also changes quantity of remaining bombs. If a location is already unlocked, it will request a new action.
     def set_flag(self, rows, cols):
         error = False
-        if self.name == " ":
-            self.name = "F"
+        if self.name == "◻":
+            self.name = "⚑"
             Field.total_flags += 1
-        elif self.name == "F":
-            self.name = " "
+        elif self.name == "⚑":
+            self.name = "◻"
             Field.total_flags -= 1
         else:
             error = True
@@ -369,8 +374,9 @@ class Field:
 
         if error == True:
             print("Sorry, but that location cannot be flagged.")
-            gamelist[-1].select_flag(rows, cols)
-        gamelist[-1].select_action()
+            gamelist[-1].select_flag()
+        else:
+            gamelist[-1].select_action()
             
 # Functions -- -- -- --
 # Lets the player select their level of difficulty. Easy, Medium, and Hard mode rows, columns, and mines taken from real Minesweeper. Custom builds a board as big as the player wants with as many mines as they want, but there must always be at least one cell must not be a mine.
