@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.1.4"
+version= "1.1.4C"
 title = """
 
 TEXT - BASED -
@@ -13,7 +13,7 @@ M M M  I  N N N  EEE      /    SSSSS  W W W  EEE    EEE    PPPP   EEE    RRRR
 M   M  I  N  NN  E       /         S  WW WW  E      E      P      E      R   R
 M   M  I  N   N  EEEEE  /      SSSSS  W   W  EEEEE  EEEEE  P      EEEEE  R   R
 
-                                       Created By: Derek Bauer / version {vers}""".format(vers=version)
+                                      Created By: CanvasSpots / version {vers}""".format(vers=version)
 
 gameboard_text = ""
 
