@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.0.3"
+version= "1.1.3"
 title = """
 
 TEXT - BASED -
@@ -15,38 +15,231 @@ M   M  I  N   N  EEEEE  /      SSSSS  W   W  EEEEE  EEEEE  P      EEEEE  R   R
 
                                        Created By: Derek Bauer / version {vers}""".format(vers=version)
 
-gameboard = []
 gameboard_text = ""
-gamemines = []
-actionlist = []
-
-# Difficulties are shown with their row, column, and number of mines.
-difficulties = {
-    "easy": [9, 9, 10],
-    "medium": [16, 16, 40],
-    "hard": [16, 30, 99]
-}
 
 # Classes -- -- -- --
 class Game:
-    game_num = 0
+    # Game number shows total games, wins, losses, and picked tiles
+    game_num = [0, 0, 0, 0]
+    # Difficulties are arranged in the following order: Rows, columns, and mines; then total played.
+    difficulties = {
+    "easy": [9, 9, 10, 0],
+    "medium": [16, 16, 40, 0],
+    "hard": [16, 30, 99, 0],
+    "customs": [0, 0, 0, 0]
+    }
 
     def __init__(self):
-        self.game_num = Game.game_num
-        Game.game_num += 1
+        Game.game_num[0] += 1
+        self.game_num = Game.game_num[0]
+
+        # Initiate game-dependent variables
+        self.game_mines = []
+        self.gameboard = []
+        self.action_list = []
 
         # Set-up the game's difficulty
-        self.difficulty = select_difficulty()
-        self.rows = self.difficulty[0]
-        self.cols = self.difficulty[1]
-        self.mines = self.difficulty[2]
-
-        # Set-up the game's initial information
-        self.game_mine = generate_mines(self.rows, self.cols)
-        self.gameboard = generate_gameboard(self.rows, self.cols)
+        self.difficulty = []
+        self.rows = 0
+        self.cols = 0
+        self.mines = 0
     
     def __repr__(self):
-        return "This is game {num}.".format(num=self.game_num)
+        if Game.game_num[2] > 0:
+            win_loss = Game.game_num[1] / Game.game_num[2]
+        else: 
+            win_loss = 1
+        return_text = "This account has a total of {win} wins and {loss} losses for an overall win/loss ratio of {winloss}.".format(win=Game.game_num[1], loss=Game.game_num[2], winloss=win_loss)
+        
+        return_text += "\nThe player has played {easy} easy games, {med} medium games, {hard} hard games, and {cust} custom games.".format(easy=Game.difficulties["easy"][3], med=Game.difficulties["medium"][3], hard=Game.difficulties["hard"][3], cust=Game.difficulties["customs"][3])
+
+        return_text += "\n\nThis is game {num}.".format(num=self.game_num)
+        return return_text
+
+    # Start a New Game -- --
+    def start_game(self):
+        game_select = input("""
+    ┌ - - - - - - - - - - - - - - - - - - - - -┐
+    | New Game, Load Game, Extras, Stats, Quit |
+    └ - - - - - - - - - - - - - - - - - - - - -┘
+""")
+        game_select = game_select.lower()
+        if "n" in game_select[0]:
+            print("     -- -- INITIALIZING GAME NUMBER {game} -- --".format(game=self.game_num))
+            self.difficulty = select_difficulty()
+            self.rows = self.difficulty[0]
+            self.cols = self.difficulty[1]
+            self.mines = self.difficulty[2]
+
+            self.game_mines.clear()
+            self.gameboard.clear()
+
+            first_selection = self.first_action()
+            self.game_mines = self.generate_mines(first_selection)
+            self.gameboard = self.generate_gameboard()
+            self.select_spot(first_selection)
+        if "s" in game_select[0]:
+            print(self)
+            self.start_game()
+        else:
+            exit()
+
+    # Gameboard Generators -- --
+    # Generate mines returns a list of locations the mines can go. Mines cannot be placed on-top of pre-existing mines.
+    def generate_mines(self, first_selection):
+        game_gen_mines =[{'num': 0, 'row': first_selection[0], 'col': first_selection[1]}]
+        for mine in range(1, self.mines + 1):
+            mine_row = ran.randint(0, self.rows - 1)
+            mine_col = ran.randint(0, self.cols - 1)
+            while mine_check(game_gen_mines, mine_row, mine_col):
+                mine_row = ran.randint(0, self.rows - 1)
+                mine_col = ran.randint(0, self.cols - 1)
+            game_gen_mines.append({'num': mine, 'row': mine_row, 'col': mine_col})
+        return game_gen_mines
+    
+    # Generates the gameboard by first creating a "Field" class for each cell and setting them to mine or number. After the field has been set, the numbers will correctly calculate how many mines are around them. As I think abou this, I could have added a script to add to all surrounding cells using the mines, but I didn't.
+    def generate_gameboard(self):
+        gameboard = []
+        Field.total_free = 0
+        Field.total_flags = 1
+        for row in range(0, self.rows):
+            column_list = []
+            for col in range(0, self.cols):
+                if mine_check(self.game_mines, row, col, False):
+                    column_list.append(Field(row, col, "Mine"))
+                else:
+                    column_list.append(Field(row, col))
+                    Field.total_free += 1
+            gameboard.append(column_list)
+        
+        # Goes through each field item and checks their numbers. This has to be done after generation so that all instances of the class are on the field to check.
+        for row in range(0, self.rows):
+            for col in range(0, self.cols):
+                gameboard[row][col].mine_counter(gameboard, self.rows, self.cols)
+        
+        return gameboard
+    
+    # Win / Lose -- -- -- --
+    def win(self):
+        generate_gameboard_text(self.rows, self.cols)
+        print("CONGRATULATIONS!! YOU WON!")
+        Game.game_num[1] += 1
+
+        time.sleep(2)
+        print("\n- - - Game Over - - -\n")
+
+        time.sleep(2)
+        play_again()
+
+    def lose(self):
+        generate_gameboard_text(self.rows, self.cols)
+        print("YOU IDIOT. YOU HIT A MINE!")
+        Game.game_num[2] += 1
+        
+        time.sleep(2)
+        print("\n- - - Game Over - - -\n")  
+        time.sleep(2)
+        play_again()
+    
+    # Player Actions -- --
+    #Divides the action based on if this is the first one or any one afterwards. First selection is bomb-free.
+    def first_action(self):
+        selection = input("""
+    Your first selection is always free.
+    
+    WHAT WOULD YOU LIKE TO DO?
+    ┌ - - - - - - - - - - - - - - ┐
+    | Options: Select, Main, Hint |
+    └ - - - - - - - - - - - - - - ┘\n""")
+        selection = selection.lower()
+        selection += " "
+
+        if "s" in selection[0]:
+            if (":" in selection) and ("," in selection):
+                start_spot = selection_split(selection)
+                if type(start_spot[0]) == type(int()) and type(start_spot[1]) == type(int()):
+                    return start_spot
+            start_spot = [-1, -1]
+            while (start_spot[0] < 0) or (start_spot[0] >= self.rows):
+                start_spot[0] = int(input("Which row would you like to select? "))
+            while (start_spot[1] < 0) or (start_spot[1] >= self.cols):
+                start_spot[1] = int(input("Which column would you like to select? "))
+            return start_spot
+        elif "main" in selection:
+            self.start_game()
+        elif "h" in selection:
+            print("""
+    1. To quickly select a cell, try use the syntax s:row,column.
+    2. Main will return you to the main menu.
+    3. Don't worry about upper- or lower-case letters, the program will fix them for you.
+    4. Have fun!""")
+            self.select_action()
+        else: 
+            print("Sorry, but that's not a valid option. Please select again. \n")
+            self.select_action()
+    
+    # Lets the player select what they'll be doing next. Added in hints to help players go faster.
+    def select_action(self):
+        selection = input("""
+    WHAT WOULD YOU LIKE TO DO?
+    ┌ - - - - - - - - - - - - - - - - - ┐
+    | Options: Select, Flag, Main, Hint |
+    └ - - - - - - - - - - - - - - - - - ┘\n""")
+        selection = selection.lower()
+        selection += " "
+
+        # When using the quick input, this divides the selection into 
+        if "s" in selection[0]:
+            if (":" in selection) and ("," in selection):
+                split = selection_split(selection)
+                if type(split[0]) == type(int()) and type(split[1]) == type(int()):
+                    self.select_spot(split)
+                else:
+                    self.select_spot()
+            else:
+                self.select_spot()
+        elif "f" in selection[0]:
+            if (":" in selection) and ("," in selection):
+                split = selection_split(selection)
+                self.select_flag(split)
+            else:
+                self.select_flag()
+        elif "main" in selection:
+            Game.game_num[2] += 1
+            gamelist.append(Game())
+            gamelist[-1].start_game()
+        elif "h" in selection:
+            print("""
+        1. To quickly select a cell, try use the syntax s:row,column.
+        2. To quickly flag a cell, try using the syntax f:row,column.
+        3. Main will return you to the main menu.
+        4. Don't worry about upper- or lower-case letters, the program will fix them for you.
+        5. Have fun!""")
+            self.select_action()
+        else: 
+            print("Sorry, but that's not a valid option. Please select again. \n")
+            self.select_action()
+
+    # If selecting a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_spot method.
+    def select_spot(self, init_spot = [-1, -1]):
+        select_row = init_spot[0]
+        select_col = init_spot[1]
+        while (select_row < 0) or (select_row >= self.rows):
+            select_row = int(input("Which row would you like to select? "))
+        while (select_col < 0) or (select_col >= self.cols):
+            select_col = int(input("Which column would you like to select? "))
+        self.gameboard[select_row][select_col].set_spot(self.gameboard, self.action_list, self.rows, self.cols)
+
+    # If flagging a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_flag method.
+    def select_flag(self, init_spot = [-1, -1]):
+        select_row = init_spot[0]
+        select_col = init_spot[1]
+        while (select_row < 0) or (select_row >= self.rows):
+            select_row = int(input("Which row would you like to select? "))
+        while (select_col < 0) or (select_col >= self.cols):
+            select_col = int(input("Which column would you like to select? "))
+        self.gameboard[select_row][select_col].set_flag(self.rows, self.cols)
+
         
 class Field:
     total_free = 0
@@ -64,68 +257,72 @@ class Field:
         return "Field type {type} is located at {row} and {col}.".format(type=self.type, row=self.cord_row, col=self.cord_col)
     
     # Counts the number of mines around the currently selected cell.
-    def mine_counter(self, gameboard, total_rows, total_cols):
+    def mine_counter(self, gameboard, rows, cols):
         if self.type == "Num":
             count = 0
             for row_plus in range(-1, 2):
                 for col_plus in range(-1, 2):
                     test_row = self.cord_row + row_plus
                     test_col = self.cord_col + col_plus 
-                    if test_row >= 0 and test_col >= 0 and test_row < total_rows and test_col < total_cols:
+                    if row_plus == 0 and col_plus == 0:
+                        pass
+                    elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols:
                         if gameboard[test_row][test_col].type == "Mine":
                             count += 1
             self.counter = count
 
     # Counts the number of flags around the currently selected cell.
-    def flag_counter(self, gameboard, total_rows, total_cols):
+    def flag_counter(self, gameboard, rows, cols):
         count = 0
         for row_plus in range(-1, 2):
             for col_plus in range(-1, 2):
                 test_row = self.cord_row + row_plus
-                test_col = self.cord_col + col_plus 
-                if test_row >= 0 and test_col >= 0 and test_row < total_rows and test_col < total_cols:
+                test_col = self.cord_col + col_plus
+                if row_plus == 0 and col_plus == 0:
+                    pass
+                elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols:
                     if gameboard[test_row][test_col].name == "F":
                         count += 1
         return count
     
     # Checks the selected cell. If the cell is a number, reveals the number. If the cell is a bomb, reveals the bomb and ends the game in a loss. And if all cells have been flipped, ends the game in a win.
-    def set_spot(self, total_rows, total_cols):
+    def set_spot(self, gameboard, action_list, rows, cols):
         error = False
         gameover = False
         if self.name == " ":
             if self.type == "Num":
                 self.name = str(self.counter)
                 Field.total_free -= 1
+                Game.game_num[3] += 1
 
                 # If the number of flags indicated in the cell match the number selected, this will add each cell surrounding the current one to the action list. Action list will then repeat the set_spot function to find more empty cells (or can end the game if the wrong cell is flagged). 
                 # Trust me, this small piece of code makes the game so much better.
-                if self.counter == self.flag_counter(gameboard, total_rows, total_cols):
+                if self.counter == self.flag_counter(gameboard, rows, cols):
                     for row_plus in range(-1, 2):
                         for col_plus in range(-1, 2):
                             test_row = self.cord_row + row_plus
                             test_col = self.cord_col + col_plus
-                            if test_row >= 0 and test_col >= 0 and test_row < total_rows and test_col < total_cols and gameboard[test_row][test_col].name == " ":
+                            if row_plus == 0 and col_plus == 0:
+                                pass
+                            elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols and gameboard[test_row][test_col].name == " ":
                                 if check_actions(test_row, test_col):
-                                    actionlist.append([test_row, test_col, True])
+                                    action_list.append([test_row, test_col, True])
             else:
                 self.name = "M"
                 gameover = True                             
         else:
             error = True
 
-        for actions in actionlist:
-            if actions[2]:
-                actions[2] = False
-                gameboard[actions[0]][actions[1]].checkout = False
-                gameboard[actions[0]][actions[1]].set_spot(total_rows, total_cols)
+        for action in action_list:
+            if action[2]:
+                action[2] = False
+                gameboard[action[0]][action[1]].checkout = False
+                gameboard[action[0]][action[1]].set_spot(gameboard, action_list, rows, cols)
         
         if Field.total_free == 0:
-            win()
-        elif gameover == True:    
-            print("You hit a mine!")
-            time.sleep(2)
-            print("\n- - - Game Over - - -\n")  
-            exit()
+            gamelist[-1].win()
+        elif gameover == True:
+            gamelist[-1].lose()
 
         # Checkout refers to if the cell has been checked-out by the player or by the game. If the cell is checked-out by the player, there is a change they've selected a flag cell or a number cell and needs to be re-selected. Also lets the player select a new action after correctly selecting a cell.
         elif self.checkout == True:
@@ -134,13 +331,13 @@ class Field:
                     print("Sorry, but that location is protected by a flag.")
                 else: 
                     print("Sorry, but that locaiton cannot be selected.")
-                select_spot(total_rows, total_cols)
-            generate_gameboard_text(total_rows, total_cols)
-            select_action()
+                gamelist[-1].select_spot()
+            generate_gameboard_text(gamelist[-1].rows, gamelist[-1].cols)
+            gamelist[-1].select_action()
         self.checkout = True
 
     # Sets the current spot to a flag or changes it to not a flag. Also changes quantity of remaining bombs. If a location is already unlocked, it will request a new action.
-    def set_flag(self, total_rows, total_cols):
+    def set_flag(self, rows, cols):
         error = False
         if self.name == " ":
             self.name = "F"
@@ -150,28 +347,30 @@ class Field:
             Field.total_flags -= 1
         else:
             error = True
-        generate_gameboard_text(total_rows, total_cols)
+        generate_gameboard_text(rows, cols)
 
         if error == True:
             print("Sorry, but that location cannot be flagged.")
-            select_flag(total_rows, total_cols)
-        select_action()
+            gamelist[-1].select_flag(rows, cols)
+        gamelist[-1].select_action()
             
 # Functions -- -- -- --
 # Lets the player select their level of difficulty. Easy, Medium, and Hard mode rows, columns, and mines taken from real Minesweeper. Custom builds a board as big as the player wants with as many mines as they want, but there must always be at least one cell must not be a mine.
 def select_difficulty():
     selection = input("""
-What level of difficulty would you like to play on?
+    DIFFICULY SELECTIONS
     ┌ - - - - - - - - - - - - - - - - - - - - ┐
     | Options: Easy, Medium, Hard, and Custom |
     └ - - - - - - - - - - - - - - - - - - - - ┘
 """)
     selection = selection.lower()
-    if selection in difficulties:
-        return difficulties[selection]
+    if selection in Game.difficulties:
+        Game.difficulties[selection][3] += 1
+        return Game.difficulties[selection]
     
     # The magic of custom games starts here. Input runs until the correct number has been added.
     elif selection == "custom":
+        Game.difficulties["customs"][3] += 1
         input_rows = int(input("How many rows? "))
         input_cols = int(input("How many columns? "))
         input_mines = int(input("How many mines? "))
@@ -185,39 +384,14 @@ What level of difficulty would you like to play on?
         print("Sorry, but that's not a valid difficulty. Please select again. \n")
         select_difficulty()
 
-# Generate mines returns a list of locations the mines can go. Mines cannot be placed on-top of pre-existing mines.
-def generate_mines(num_mines, rows, columns):
-    for mine in range(0, num_mines):
-        mine_row = ran.randint(0, rows - 1)
-        mine_col = ran.randint(0, columns - 1)
-        while mine_check(mine_row, mine_col):
-            mine_row = ran.randint(0, rows - 1)
-            mine_col = ran.randint(0, columns - 1)
-        gamemines.append({'num': mine, 'row': mine_row, 'col': mine_col})
-
 # Mine check looks to see if a mine exists at the locaiton indicated. Returns a boolean.
-def mine_check(check_row, check_col):
-    for mine in gamemines:
-        if check_row == mine['row'] and check_col == mine['col']:
+def mine_check(mine_list, check_row, check_col, check_start = True):
+    for mine in mine_list:
+        if check_start == False and mine['num'] == 0:
+            pass
+        elif check_row == mine['row'] and check_col == mine['col']:
             return True
     return False
-
-# Generates the gameboard by first creating a "Field" class for each cell and setting them to mine or number. After the field has been set, the numbers will correctly calculate how many mines are around them. As I think abou this, I could have added a script to add to all surrounding cells using the mines, but I didn't.
-def generate_gameboard(total_rows, total_columns):
-    for row in range(0, total_rows):
-        column_list = []
-        for col in range(0, total_columns):
-            if mine_check(row, col):
-                column_list.append(Field(row, col, "Mine"))
-            else:
-                column_list.append(Field(row, col))
-                Field.total_free += 1
-        gameboard.append(column_list)
-    
-    # Goes through each field item and checks their numbers. This has to be done after generation so that all instances of the class are on the field to check.
-    for row in range(0, total_rows):
-        for col in range(0, total_columns):
-            gameboard[row][col].mine_counter(gameboard, total_rows, total_columns)
 
 # The magical gameboard text generator creates a gameboard. Creates a key for each row and column at the top and the left to help players navigate the board. Gathers what the cell is currently supposed to be displaying as well. Also creates square boxes using text around each of the cells. Board should correctly display for all sizes up to 99.
 def generate_gameboard_text(rows, cols):
@@ -280,46 +454,10 @@ def generate_gameboard_text(rows, cols):
                     if col == cols2:
                         text += "\n"
                 else:
-                    text += gameboard[true_row][true_col].name
-    text += "\nThere are {mines} remaining.".format(mines=len(gamemines)-Field.total_flags)
+                    text += gamelist[-1].gameboard[true_row][true_col].name
+    text += "\nThere are {mines} remaining.".format(mines=len(gamelist[-1].game_mines) - Field.total_flags)
     print(text)
     return text
-
-# Lets the player select what they'll be doing next. Added in hints to help players go faster.
-def select_action():
-    selection = "retry"
-    selection = input("""
-What would you like to do?
-    ┌ - - - - - - - - - - - - - - - - - ┐
-    | Options: Select, Flag, Quit, Hint |
-    └ - - - - - - - - - - - - - - - - - ┘                      
-""")
-    selection = selection.lower()
-    selection += " "
-    if "s" in selection[0]:
-        if (":" in selection) and ("," in selection):
-            split = selection_split(selection)
-            select_spot(total_rows, total_cols, int(split[0]), int(split[1]))
-        else:
-            select_spot(total_rows, total_cols)
-    elif "f" in selection[0]:
-        if (":" in selection) and ("," in selection):
-            split = selection_split(selection)
-            select_flag(total_rows, total_cols, int(split[0]), int(split[1]))
-        else:
-            select_flag(total_rows, total_cols)
-    elif "quit" in selection:
-        exit()
-    elif "h" in selection:
-        print("""
-    1. To quickly select a cell, try use the syntax s:row,column.
-    2. To quickly flag a cell, try using the syntax f:row,column.
-    3. Don't worry about upper- or lower-case letters, the program will fix them for you.
-    4. Have fun!""")
-        select_action()
-    else: 
-        print("Sorry, but that's not a valid option. Please select again. \n")
-        select_action()
 
 # Magical bit of code that splits apart a player's selection for the faster selection bit.
 def selection_split(selection):
@@ -333,51 +471,30 @@ def selection_split(selection):
         split_select = [-1, -1]
     return split_select
 
-# If selecting a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_spot method.
-def select_spot(total_rows, total_cols, init_row = -1, init_col = -1):
-    select_row = init_row
-    select_col = init_col
-    while (select_row < 0) or (select_row >= total_rows):
-        select_row = int(input("Which row would you like to select? "))
-    while (select_col < 0) or (select_col >= total_cols):
-        select_col = int(input("Which column would you like to select? "))
-    gameboard[select_row][select_col].set_spot(total_rows, total_cols)
-
-# If flagging a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_flag method.
-def select_flag(total_rows, total_cols, init_row = -1, init_col = -1):
-    select_row = init_row
-    select_col = init_col
-    while (select_row < 0) or (select_row >= total_rows):
-        select_row = int(input("Which row would you like to select? "))
-    while (select_col < 0) or (select_col >= total_cols):
-        select_col = int(input("Which column would you like to select? "))
-    gameboard[select_row][select_col].set_flag(total_rows, total_cols)
-
 # goes through the action list and sees if the action already exists.
 def check_actions(check_row, check_col):
-    for item in actionlist:
+    for item in gamelist[-1].action_list:
         if item[0] == check_row and item[1] == check_col:
             return False
     return True
 
-# Win / Lose -- -- -- --
-def win():
-    generate_gameboard_text(total_rows, total_cols)
-    print("Congratulations! You won!")
-    exit()
+def play_again():
+    again = input("""
+    PLAY AGAIN??
+    ┌ - - - - - - - - - - - - - - ┐
+    | Options: Yes, No (and Quit) |
+    └ - - - - - - - - - - - - - - ┘\n""")
+    again = again.lower()
+    if "y" in again[0]:
+        gamelist.append(Game())
+        gamelist[-1].start_game()
+    else:
+        exit()
 
 # Gameplay -- -- -- --
 # I'm really sad to say that this is so far all I've generated for the gameplay tab. Looking at adding the "Game" class which should be able to keep track of games, scores, and start new ones. Also hoping to integrate a bit of a text file to add saves for statistics.
 print('\n\nWelcome to...' + title)
 time.sleep(1)
 
-difficulty = select_difficulty()
-
-total_rows = difficulty[0]
-total_cols = difficulty[1]
-total_mines = difficulty[2]
-
-generate_mines(total_mines, total_rows, total_cols)
-generate_gameboard(total_rows, total_cols)
-generate_gameboard_text(total_rows, total_cols)
-select_action()
+gamelist = [Game()]
+gamelist[0].start_game()
