@@ -2,7 +2,7 @@ import time
 import random as ran
 
 # Starting Variables -- -- -- --
-version= "1.1.5C"
+version= "1.1.6C"
 title = """
 
 TEXT - BASED -
@@ -23,8 +23,8 @@ bad_hints = [
 
 # Classes -- -- -- --
 class Game:
-    # Game number shows total games, wins, losses, and cells cleared
-    game_num = [0, 0, 0, 0]
+    # Game number shows total games, wins, and cells cleared
+    game_num = [0, 0, 0]
     # Difficulties are arranged in the following order: Rows, columns, and mines; then total played.
     difficulties = {
     "easy": [9, 9, 10, 0],
@@ -49,26 +49,35 @@ class Game:
         self.mines = 0
     
     def __repr__(self):
-        if Game.game_num[2] > 0:
-            win_loss = Game.game_num[1] / Game.game_num[2]
+        loss = Game.game_num[0] - Game.game_num[1] - 1
+        if loss > 0:
+            win_loss = Game.game_num[1] / loss
         else: 
             win_loss = 1
-        return_text = "This account has a total of {win} wins and {loss} losses for an overall win/loss ratio of {winloss}.".format(win=Game.game_num[1], loss=Game.game_num[2], winloss=win_loss)
+        return_text = "This account has a total of {win} wins and {loss} losses for an overall win/loss ratio of {winloss}.".format(win=Game.game_num[1], loss=loss, winloss=win_loss)
         
         return_text += "\nThis account has played {easy} easy games, {med} medium games, {hard} hard games, and {cust} custom games.".format(easy=Game.difficulties["easy"][3], med=Game.difficulties["medium"][3], hard=Game.difficulties["hard"][3], cust=Game.difficulties["customs"][3])
 
-        return_text += "\n\nThis account has cleared {tiles} cells from mines.".format(tiles=Game.game_num[3])
+        return_text += "\n\nThis account has cleared {tiles} cells from mines.".format(tiles=Game.game_num[2])
 
         return_text += "\n\nThis is game {num}.".format(num=self.game_num)
         return return_text
 
     # Start a New Game -- --
     def start_game(self):
+        game_options = ["n", "l", "e", "s", "q"]
         game_select = input("""
     ┌ - - - - - - - - - - - - - - - - - - - - -┐
     | New Game, Load Game, Extras, Stats, Quit |
     └ - - - - - - - - - - - - - - - - - - - - -┘
-""")
+""") + " "
+        while game_select[0] not in game_options:
+            print("Sorry, but that's not a valid option. Please select again. \n")
+            game_select = input("""
+    ┌ - - - - - - - - - - - - - - - - - - - - -┐
+    | New Game, Load Game, Extras, Stats, Quit |
+    └ - - - - - - - - - - - - - - - - - - - - -┘
+""") + " "
         game_select = game_select.lower()
         if "n" in game_select[0]:
             print("     -- -- INITIALIZING GAME NUMBER {game} -- --".format(game=self.game_num))
@@ -156,30 +165,45 @@ class Game:
     # Player Actions -- --
     #Divides the action based on if this is the first one or any one afterwards. First selection is bomb-free.
     def first_action(self):
+        selection_options = ["s", "m", "q", "h"]
         selection = input("""
     Your first selection is always free.
     
     WHAT WOULD YOU LIKE TO DO?
     ┌ - - - - - - - - - - - - - - ┐
     | Options: Select, Main, Hint |
-    └ - - - - - - - - - - - - - - ┘\n""")
+    └ - - - - - - - - - - - - - - ┘\n""") + " "
+        while selection[0] not in selection_options:
+            print("Sorry, but that's not a valid option. Please select again.")
+            selection = input("""
+    Your first selection is always free.
+    
+    WHAT WOULD YOU LIKE TO DO?
+    ┌ - - - - - - - - - - - - - - ┐
+    | Options: Select, Main, Hint |
+    └ - - - - - - - - - - - - - - ┘\n""") + " "
         selection = selection.lower()
-        selection += " "
 
         if "s" in selection[0]:
             if (":" in selection) and ("," in selection):
                 start_spot = selection_split(selection)
                 if type(start_spot[0]) == type(int()) and type(start_spot[1]) == type(int()):
-                    return start_spot
-            start_spot = [-1, -1]
-            while (0 > start_spot[0] >= self.rows):
-                start_spot[0] = int(input("Which row would you like to select? "))
-            while (0 > start_spot[1] >= self.cols):
-                start_spot[1] = int(input("Which column would you like to select? "))
+                        return start_spot
+            start_spot = [self.rows + 1, -1]
+            while (0 > start_spot[0]) or (start_spot[0] >= self.rows):
+                select = input("\nWhich row would you like to select? ")
+                while check_select(select, self.rows) == False:
+                    select = input("Which row would you like to select? ")
+                start_spot[0] = int(select)
+            while (0 > start_spot[1]) or (start_spot[1] >= self.cols):
+                select = input("\nWhich column would you like to select? ")
+                while check_select(select, self.cols) == False:
+                    select = input("Which column would you like to select? ")
+                start_spot[1] = int(select)
             return start_spot
-        elif "main" in selection:
+        elif "m" in selection[0]:
             self.start_game()
-        elif "quit" in selection:
+        elif "q" in selection[0]:
             exit()
         elif "h" in selection:
             print("""
@@ -189,19 +213,23 @@ class Game:
     4. Don't worry about upper- or lower-case letters, the program will fix them for you.
     5. Have fun!""")
             self.select_action()
-        else: 
-            print("Sorry, but that's not a valid option. Please select again. \n")
-            self.select_action()
     
     # Lets the player select what they'll be doing next. Added in hints to help players go faster.
     def select_action(self):
+        selection_options = ["s", "f", "m", "q", "h"]
         selection = input("""
     WHAT WOULD YOU LIKE TO DO?
     ┌ - - - - - - - - - - - - - - - - - ┐
     | Options: Select, Flag, Main, Hint |
-    └ - - - - - - - - - - - - - - - - - ┘\n""")
+    └ - - - - - - - - - - - - - - - - - ┘\n""") + " "
+        while selection[0] not in selection_options:
+            print("Sorry, but that's not a valid option. Please select again.")
+            selection = input("""
+    WHAT WOULD YOU LIKE TO DO?
+    ┌ - - - - - - - - - - - - - - - - - ┐
+    | Options: Select, Flag, Main, Hint |
+    └ - - - - - - - - - - - - - - - - - ┘\n""") + " "
         selection = selection.lower()
-        selection += " "
 
         # When using the quick input, this divides the selection into 
         if "s" in selection[0]:
@@ -237,17 +265,21 @@ class Game:
         else: 
             print("Sorry, but that's not a valid option. Please select again. \n")
             self.select_action()
-
+        
     # If selecting a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_spot method.
     def select_spot(self, init_spot = [-1, -1]):
         select_row = init_spot[0]
         select_col = init_spot[1]
-        while (0 > select_row >= self.rows):
-            select_row = int(input("Which row would you like to select? "))
-        while (0 > select_col >= self.cols):
-            select_col = int(input("Which column would you like to select? "))
-        select_row = int(select_row)
-        select_col = int(select_col)
+        while (0 > select_row) or (select_row >= self.rows):
+            select = input("\nWhich row would you like to select? ")
+            while check_select(select, self.rows) == False:
+                select = input("Which row would you like to select? ")
+            select_row = int(select)
+        while (0 > select_col) or (select_col >= self.cols):
+            select = input("\nWhich column would you like to select? ")
+            while check_select(select, self.cols) == False:
+                select = input("Which column would you like to select? ")
+            select_col = int(select)
         self.gameboard[select_row][select_col].set_spot(self.gameboard, self.action_list, self.rows, self.cols)
 
     # If flagging a spot, this checks that both a row and a column have been selected. If not, asks for a new row and column selection before initiating the Field.set_flag method.
@@ -255,9 +287,15 @@ class Game:
         select_row = init_spot[0]
         select_col = init_spot[1]
         while (0 > select_row >= self.rows):
-            select_row = int(input("Which row would you like to select? "))
+            select = input("Which row would you like to select? ")
+            while check_select(select, self.rows) == False:
+                select = input("Which row would you like to select? ")
+            select_row = int(select)
         while (0 > select_col >= self.cols):
-            select_col = int(input("Which column would you like to select? "))
+            select = input("\nWhich column would you like to select? ")
+            while check_select(select, self.cols) == False:
+                select = input("Which column would you like to select? ")
+            select_col = int(select)
         self.gameboard[select_row][select_col].set_flag(self.rows, self.cols)
 
         
@@ -316,7 +354,7 @@ class Field:
                 else:
                     self.name = str(self.counter)
                 Field.total_free -= 1
-                Game.game_num[3] += 1
+                Game.game_num[2] += 1
 
                 # If the number of flags indicated in the cell match the number selected, this will add each cell surrounding the current one to the action list. Action list will then repeat the set_spot function to find more empty cells (or can end the game if the wrong cell is flagged). 
                 # Trust me, this small piece of code makes the game so much better.
@@ -327,7 +365,7 @@ class Field:
                             test_col = self.cord_col + col_plus
                             if row_plus == 0 and col_plus == 0:
                                 pass
-                            elif test_row >= 0 and test_col >= 0 and test_row < rows and test_col < cols and gameboard[test_row][test_col].name == "◻":
+                            elif (0 <= test_row < rows) and (0 <= test_col < cols) and gameboard[test_row][test_col].name == "◻":
                                 if check_actions(test_row, test_col):
                                     action_list.append([test_row, test_col, True])
             else:
@@ -353,9 +391,11 @@ class Field:
                 if self.name == "⚑":
                     print("Sorry, but that location is protected by a flag.")
                 else: 
-                    print("Sorry, but that locaiton cannot be selected.")
-                gamelist[-1].select_spot()
-            generate_gameboard_text(gamelist[-1].rows, gamelist[-1].cols)
+                    print("Sorry, but that location cannot be selected.")
+                    gamelist[-1].select_spot()
+            
+            else:
+                generate_gameboard_text(gamelist[-1].rows, gamelist[-1].cols)
             gamelist[-1].select_action()
         self.checkout = True
 
@@ -381,19 +421,31 @@ class Field:
 # Functions -- -- -- --
 # Lets the player select their level of difficulty. Easy, Medium, and Hard mode rows, columns, and mines taken from real Minesweeper. Custom builds a board as big as the player wants with as many mines as they want, but there must always be at least one cell must not be a mine.
 def select_difficulty():
+    possible_answers = ["e", "m", "h", "c"]
     selection = input("""
     DIFFICULY SELECTIONS
     ┌ - - - - - - - - - - - - - - - - - - - - ┐
     | Options: Easy, Medium, Hard, and Custom |
     └ - - - - - - - - - - - - - - - - - - - - ┘
-""")
+""") + " "
+    while selection[0] not in possible_answers:
+        print("Sorry, but that's not a valid difficulty. Please select again. \n")
+        selection = input("""
+    DIFFICULY SELECTIONS
+    ┌ - - - - - - - - - - - - - - - - - - - - ┐
+    | Options: Easy, Medium, Hard, and Custom |
+    └ - - - - - - - - - - - - - - - - - - - - ┘
+""") + " "
     selection = selection.lower()
-    if selection in Game.difficulties:
-        Game.difficulties[selection][3] += 1
-        return Game.difficulties[selection]
-    
-    # The magic of custom games starts here. Input runs until the correct number has been added.
-    elif selection == "custom":
+
+    #Translate the selection to a possible outcome. This also includes quick selecting based on first letter.
+    if selection[0] == "e":
+        select = "easy"
+    elif selection[0] == "m":
+            select = "medium"
+    elif selection[0] == "h":
+            select = "hard"
+    else:
         Game.difficulties["customs"][3] += 1
         input_rows = int(input("How many rows? "))
         input_cols = int(input("How many columns? "))
@@ -404,10 +456,21 @@ def select_difficulty():
             input_cols = int(input("How many columns? "))
             input_mines = int(input("How many mines? "))
         return [input_rows, input_cols, input_mines]
-    else:
-        print("Sorry, but that's not a valid difficulty. Please select again. \n")
-        select_difficulty()
+    
+    Game.difficulties[select][3] += 1
+    return Game.difficulties[select]
 
+    # The magic of custom games starts here. Input runs until the correct number has been added.
+    
+#This checks that the selection is an integer.
+def check_select(selection, count):
+    try:
+        int(selection)
+    except:
+        print("\nPlease use an integer between 0 and " + str(count))
+        return False
+    else:
+        return True
 # Mine check looks to see if a mine exists at the locaiton indicated. Returns a boolean.
 def mine_check(mine_list, check_row, check_col, check_start = True):
     for mine in mine_list:
